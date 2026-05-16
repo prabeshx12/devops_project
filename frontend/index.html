@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>InventoryOps</title>
+  <style>
+    :root {
+      --bg: #f5f7fa;
+      --panel: #ffffff;
+      --text: #1f2937;
+      --muted: #667085;
+      --line: #d0d5dd;
+      --accent: #0f766e;
+      --accent-dark: #115e59;
+      --danger: #b42318;
+      --warn: #b54708;
+      --ok: #027a48;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Arial, Helvetica, sans-serif;
+      line-height: 1.5;
+    }
+
+    header {
+      background: #12313b;
+      color: white;
+      padding: 24px;
+    }
+
+    header h1 {
+      margin: 0 0 6px;
+      font-size: 30px;
+      letter-spacing: 0;
+    }
+
+    header p {
+      margin: 0;
+      color: #d8e5e8;
+      max-width: 760px;
+    }
+
+    main {
+      width: min(1180px, calc(100% - 32px));
+      margin: 24px auto;
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 20px;
+    }
+
+    section, .toolbar {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+
+    section {
+      padding: 18px;
+    }
+
+    h2 {
+      margin: 0 0 14px;
+      font-size: 19px;
+    }
+
+    label {
+      display: block;
+      margin: 12px 0 6px;
+      color: #344054;
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 10px 11px;
+      font: inherit;
+      background: white;
+      color: var(--text);
+    }
+
+    textarea {
+      min-height: 76px;
+      resize: vertical;
+    }
+
+    button {
+      border: 0;
+      border-radius: 6px;
+      background: var(--accent);
+      color: white;
+      padding: 10px 14px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    button:hover { background: var(--accent-dark); }
+    button.secondary {
+      background: #eef4f3;
+      color: var(--accent-dark);
+      border: 1px solid #a7c9c5;
+    }
+    button.danger { background: var(--danger); }
+    button.small { padding: 7px 10px; font-size: 13px; }
+
+    .form-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 16px;
+      flex-wrap: wrap;
+    }
+
+    .toolbar {
+      padding: 14px;
+      display: grid;
+      grid-template-columns: 1fr 150px 150px auto;
+      gap: 10px;
+      align-items: end;
+      margin-bottom: 16px;
+    }
+
+    .status-bar {
+      min-height: 24px;
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .metric {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+    }
+
+    .metric span {
+      display: block;
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 4px;
+    }
+
+    .metric strong {
+      font-size: 26px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    th, td {
+      text-align: left;
+      padding: 12px;
+      border-bottom: 1px solid #eaecf0;
+      vertical-align: top;
+      font-size: 14px;
+    }
+
+    th {
+      background: #f9fafb;
+      color: #344054;
+    }
+
+    tr:last-child td { border-bottom: 0; }
+
+    .badge {
+      display: inline-block;
+      border-radius: 999px;
+      padding: 3px 9px;
+      font-size: 12px;
+      font-weight: 700;
+      background: #eef4ff;
+      color: #3538cd;
+    }
+
+    .badge.low { background: #fff4ed; color: var(--warn); }
+    .badge.ok { background: #ecfdf3; color: var(--ok); }
+    .badge.archived { background: #f2f4f7; color: #475467; }
+
+    .row-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .empty {
+      text-align: center;
+      color: var(--muted);
+      padding: 26px;
+    }
+
+    @media (max-width: 900px) {
+      main { grid-template-columns: 1fr; }
+      .toolbar { grid-template-columns: 1fr 1fr; }
+      .summary { grid-template-columns: 1fr; }
+      table, thead, tbody, th, td, tr { display: block; }
+      thead { display: none; }
+      tr { border-bottom: 1px solid var(--line); }
+      td { border-bottom: 0; padding: 8px 12px; }
+      td::before {
+        content: attr(data-label);
+        display: block;
+        font-weight: 700;
+        color: #475467;
+        margin-bottom: 2px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>InventoryOps</h1>
+    <p>Track lab, office, or store inventory with low-stock alerts, CSV export, and DevOps-ready monitoring.</p>
+  </header>
+
+  <main>
+    <section>
+      <h2 id="formTitle">Add Inventory Item</h2>
+      <form id="itemForm">
+        <input type="hidden" id="itemId" />
+
+        <label for="name">Item name</label>
+        <input id="name" required maxlength="100" placeholder="HDMI Cable" />
+
+        <label for="category">Category</label>
+        <input id="category" maxlength="60" value="General" />
+
+        <label for="quantity">Quantity</label>
+        <input id="quantity" type="number" min="0" required value="1" />
+
+        <label for="lowStock">Low-stock threshold</label>
+        <input id="lowStock" type="number" min="0" value="5" />
+
+        <label for="location">Location</label>
+        <input id="location" maxlength="80" value="Store Room" />
+
+        <label for="status">Status</label>
+        <select id="status">
+          <option value="active">Active</option>
+          <option value="archived">Archived</option>
+        </select>
+
+        <label for="notes">Notes</label>
+        <textarea id="notes" maxlength="300" placeholder="Optional item notes"></textarea>
+
+        <div class="form-actions">
+          <button type="submit" id="saveButton">Save Item</button>
+          <button type="button" class="secondary" id="resetButton">Clear</button>
+        </div>
+      </form>
+      <div class="status-bar" id="message"></div>
+    </section>
+
+    <div>
+      <div class="summary">
+        <div class="metric"><span>Total items</span><strong id="totalItems">0</strong></div>
+        <div class="metric"><span>Low stock</span><strong id="lowStockItems">0</strong></div>
+        <div class="metric"><span>Total quantity</span><strong id="totalQuantity">0</strong></div>
+      </div>
+
+      <div class="toolbar">
+        <div>
+          <label for="search">Search</label>
+          <input id="search" placeholder="Name, category, location" />
+        </div>
+        <div>
+          <label for="statusFilter">Status</label>
+          <select id="statusFilter">
+            <option value="">All</option>
+            <option value="active">Active</option>
+            <option value="archived">Archived</option>
+          </select>
+        </div>
+        <div>
+          <label for="stockFilter">Stock</label>
+          <select id="stockFilter">
+            <option value="">All</option>
+            <option value="low">Low only</option>
+          </select>
+        </div>
+        <button type="button" class="secondary" id="exportButton">Export CSV</button>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th>Stock</th>
+            <th>Location</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="itemsTable"></tbody>
+      </table>
+    </div>
+  </main>
+
+  <script>
+    const apiBase = '/api/items';
+    const form = document.getElementById('itemForm');
+    const fields = {
+      id: document.getElementById('itemId'),
+      name: document.getElementById('name'),
+      category: document.getElementById('category'),
+      quantity: document.getElementById('quantity'),
+      lowStock: document.getElementById('lowStock'),
+      location: document.getElementById('location'),
+      status: document.getElementById('status'),
+      notes: document.getElementById('notes')
+    };
+    let items = [];
+
+    function setMessage(text, isError = false) {
+      const message = document.getElementById('message');
+      message.textContent = text;
+      message.style.color = isError ? '#b42318' : '#667085';
+    }
+
+    function payloadFromForm() {
+      return {
+        name: fields.name.value.trim(),
+        category: fields.category.value.trim() || 'General',
+        quantity: Number(fields.quantity.value),
+        low_stock_threshold: Number(fields.lowStock.value),
+        location: fields.location.value.trim() || 'Store Room',
+        status: fields.status.value,
+        notes: fields.notes.value.trim()
+      };
+    }
+
+    function resetForm() {
+      form.reset();
+      fields.id.value = '';
+      fields.category.value = 'General';
+      fields.quantity.value = '1';
+      fields.lowStock.value = '5';
+      fields.location.value = 'Store Room';
+      fields.status.value = 'active';
+      document.getElementById('formTitle').textContent = 'Add Inventory Item';
+      document.getElementById('saveButton').textContent = 'Save Item';
+    }
+
+    async function loadItems() {
+      setMessage('Loading inventory...');
+      const params = new URLSearchParams();
+      const status = document.getElementById('statusFilter').value;
+      const stock = document.getElementById('stockFilter').value;
+      if (status) params.set('status', status);
+      if (stock === 'low') params.set('low_stock', 'true');
+
+      const response = await fetch(`${apiBase}?${params.toString()}`);
+      if (!response.ok) throw new Error('Could not load inventory');
+      const data = await response.json();
+      items = data.items;
+      renderItems();
+      setMessage('');
+    }
+
+    function filteredItems() {
+      const query = document.getElementById('search').value.trim().toLowerCase();
+      if (!query) return items;
+      return items.filter(item => [item.name, item.category, item.location, item.notes]
+        .join(' ')
+        .toLowerCase()
+        .includes(query));
+    }
+
+    function renderItems() {
+      const table = document.getElementById('itemsTable');
+      const visible = filteredItems();
+      const lowCount = items.filter(item => item.quantity <= item.low_stock_threshold).length;
+      document.getElementById('totalItems').textContent = items.length;
+      document.getElementById('lowStockItems').textContent = lowCount;
+      document.getElementById('totalQuantity').textContent = items.reduce((sum, item) => sum + item.quantity, 0);
+
+      if (visible.length === 0) {
+        table.innerHTML = '<tr><td class="empty" colspan="5">No inventory items found.</td></tr>';
+        return;
+      }
+
+      table.innerHTML = visible.map(item => {
+        const isLow = item.quantity <= item.low_stock_threshold;
+        const stockBadge = isLow ? '<span class="badge low">Low stock</span>' : '<span class="badge ok">In stock</span>';
+        const statusBadge = item.status === 'archived'
+          ? '<span class="badge archived">Archived</span>'
+          : '<span class="badge ok">Active</span>';
+        return `
+          <tr>
+            <td data-label="Item">
+              <strong>${escapeHtml(item.name)}</strong><br>
+              <span>${escapeHtml(item.category)}</span>
+              ${item.notes ? `<br><span>${escapeHtml(item.notes)}</span>` : ''}
+            </td>
+            <td data-label="Stock">
+              ${item.quantity} / threshold ${item.low_stock_threshold}<br>${stockBadge}
+            </td>
+            <td data-label="Location">${escapeHtml(item.location)}</td>
+            <td data-label="Status">${statusBadge}</td>
+            <td data-label="Actions">
+              <div class="row-actions">
+                <button class="small secondary" onclick="editItem('${item.id}')">Edit</button>
+                <button class="small danger" onclick="deleteItem('${item.id}')">Delete</button>
+              </div>
+            </td>
+          </tr>`;
+      }).join('');
+    }
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, char => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
+      }[char]));
+    }
+
+    window.editItem = function(id) {
+      const item = items.find(entry => entry.id === id);
+      if (!item) return;
+      fields.id.value = item.id;
+      fields.name.value = item.name;
+      fields.category.value = item.category;
+      fields.quantity.value = item.quantity;
+      fields.lowStock.value = item.low_stock_threshold;
+      fields.location.value = item.location;
+      fields.status.value = item.status;
+      fields.notes.value = item.notes;
+      document.getElementById('formTitle').textContent = 'Edit Inventory Item';
+      document.getElementById('saveButton').textContent = 'Update Item';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    window.deleteItem = async function(id) {
+      if (!confirm('Delete this inventory item?')) return;
+      const response = await fetch(`${apiBase}/${id}`, { method: 'DELETE' });
+      if (!response.ok) {
+        setMessage('Delete failed.', true);
+        return;
+      }
+      await loadItems();
+      setMessage('Item deleted.');
+    };
+
+    form.addEventListener('submit', async event => {
+      event.preventDefault();
+      const id = fields.id.value;
+      const response = await fetch(id ? `${apiBase}/${id}` : apiBase, {
+        method: id ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payloadFromForm())
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        setMessage(error.detail || 'Save failed.', true);
+        return;
+      }
+      resetForm();
+      await loadItems();
+      setMessage(id ? 'Item updated.' : 'Item created.');
+    });
+
+    document.getElementById('resetButton').addEventListener('click', resetForm);
+    document.getElementById('search').addEventListener('input', renderItems);
+    document.getElementById('statusFilter').addEventListener('change', () => loadItems().catch(error => setMessage(error.message, true)));
+    document.getElementById('stockFilter').addEventListener('change', () => loadItems().catch(error => setMessage(error.message, true)));
+    document.getElementById('exportButton').addEventListener('click', () => {
+      window.location.href = `${apiBase}/export`;
+    });
+
+    loadItems().catch(error => setMessage(error.message, true));
+  </script>
+</body>
+</html>
+

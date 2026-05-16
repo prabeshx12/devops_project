@@ -1,0 +1,78 @@
+- name: Deploy InventoryOps container on Azure VM
+  hosts: inventoryops
+  become: true
+  vars:
+    app_name: inventoryops
+    app_port: 8000
+    data_dir: /opt/inventoryops/data
+    acr_login_server: "{{ lookup('env', 'ACR_LOGIN_SERVER') }}"
+    acr_repository: "{{ lookup('env', 'ACR_REPOSITORY') | default('inventoryops', true) }}"
+    acr_username: "{{ lookup('env', 'ACR_USERNAME') }}"
+    acr_password: "{{ lookup('env', 'ACR_PASSWORD') }}"
+    image_tag: "{{ lookup('env', 'IMAGE_TAG') | default('latest', true) }}"
+    image_name: "{{ acr_login_server }}/{{ acr_repository }}:{{ image_tag }}"
+
+  tasks:
+    - name: Ensure Docker is installed
+      ansible.builtin.package:
+        name: docker.io
+        state: present
+
+    - name: Ensure Docker service is running
+      ansible.builtin.service:
+        name: docker
+        state: started
+        enabled: true
+
+    - name: Ensure app data directory exists
+      ansible.builtin.file:
+        path: "{{ data_dir }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Login to Azure Container Registry
+      ansible.builtin.command: >
+        docker login {{ acr_login_server }}
+        --username {{ acr_username }}
+        --password {{ acr_password }}
+      changed_when: false
+      no_log: true
+
+    - name: Pull latest InventoryOps image
+      ansible.builtin.command: docker pull {{ image_name }}
+
+    - name: Stop existing container
+      ansible.builtin.command: docker stop {{ app_name }}
+      register: stop_result
+      failed_when: false
+      changed_when: stop_result.rc == 0
+
+    - name: Remove existing container
+      ansible.builtin.command: docker rm {{ app_name }}
+      register: rm_result
+      failed_when: false
+      changed_when: rm_result.rc == 0
+
+    - name: Run new InventoryOps container
+      ansible.builtin.command: >
+        docker run -d
+        --name {{ app_name }}
+        --restart unless-stopped
+        -p {{ app_port }}:8000
+        -e DATA_DIR=/app/data
+        -e LOG_LEVEL=INFO
+        -v {{ data_dir }}:/app/data
+        {{ image_name }}
+
+    - name: Verify health endpoint
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:{{ app_port }}/health"
+        method: GET
+        status_code: 200
+      register: health_result
+      retries: 10
+      delay: 3
+      until: health_result.status == 200
+

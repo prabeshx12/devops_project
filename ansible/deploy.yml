@@ -58,12 +58,11 @@
         -v {{ data_dir }}:/app/data
         {{ image_name }}
 
-    - name: Verify health endpoint
-      ansible.builtin.uri:
-        url: "http://127.0.0.1:{{ app_port }}/health"
-        method: GET
-        status_code: 200
+    - name: Verify health endpoint inside the app container
+      ansible.builtin.command: >
+        docker exec {{ app_name }}
+        python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5)"
       register: health_result
       retries: 10
       delay: 3
-      until: health_result.status == 200
+      until: health_result.rc == 0

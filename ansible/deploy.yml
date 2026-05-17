@@ -1,6 +1,5 @@
 - name: Deploy InventoryOps container on Azure VM
   hosts: inventoryops
-  become: true
   vars:
     app_name: inventoryops
     app_port: 8000
@@ -13,25 +12,6 @@
     image_name: "{{ acr_login_server }}/{{ acr_repository }}:{{ image_tag }}"
 
   tasks:
-    - name: Ensure Docker is installed
-      ansible.builtin.package:
-        name: docker.io
-        state: present
-
-    - name: Ensure Docker service is running
-      ansible.builtin.service:
-        name: docker
-        state: started
-        enabled: true
-
-    - name: Ensure app data directory exists
-      ansible.builtin.file:
-        path: "{{ data_dir }}"
-        state: directory
-        owner: root
-        group: root
-        mode: "0755"
-
     - name: Login to Azure Container Registry
       ansible.builtin.command: >
         docker login {{ acr_login_server }}
@@ -75,4 +55,3 @@
       retries: 10
       delay: 3
       until: health_result.status == 200
-

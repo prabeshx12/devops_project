@@ -35,6 +35,18 @@
       failed_when: false
       changed_when: rm_result.rc == 0
 
+    - name: Stop local Compose app container if it is using the app port
+      ansible.builtin.command: docker stop inventoryops-app
+      register: stop_compose_result
+      failed_when: false
+      changed_when: stop_compose_result.rc == 0
+
+    - name: Remove local Compose app container if it exists
+      ansible.builtin.command: docker rm inventoryops-app
+      register: rm_compose_result
+      failed_when: false
+      changed_when: rm_compose_result.rc == 0
+
     - name: Run new InventoryOps container
       ansible.builtin.command: >
         docker run -d

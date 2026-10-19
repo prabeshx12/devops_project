@@ -55,9 +55,9 @@ pipeline {
                             --password ${AZURE_CLIENT_SECRET} \
                             --tenant ${AZURE_TENANT_ID}
                         az account set --subscription ${AZURE_SUBSCRIPTION_ID}
-                        docker login ${ACR_LOGIN_SERVER} \
+                        echo "${AZURE_CLIENT_SECRET}" | docker login ${ACR_LOGIN_SERVER} \
                             --username ${AZURE_CLIENT_ID} \
-                            --password ${AZURE_CLIENT_SECRET}
+                            --password-stdin
                         docker tag inventoryops:${IMAGE_TAG} ${IMAGE_NAME}
                         docker push ${IMAGE_NAME}
                         docker tag inventoryops:${IMAGE_TAG} ${ACR_LOGIN_SERVER}/${ACR_REPOSITORY}:latest

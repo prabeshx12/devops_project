@@ -469,7 +469,10 @@
       });
       if (!response.ok) {
         const error = await response.json();
-        setMessage(error.detail || 'Save failed.', true);
+        const detail = Array.isArray(error.detail)
+          ? error.detail.map(entry => entry.msg).join('; ')
+          : error.detail;
+        setMessage(detail || 'Save failed.', true);
         return;
       }
       resetForm();

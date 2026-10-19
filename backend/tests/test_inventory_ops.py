@@ -46,3 +46,17 @@ def test_export_csv(client, sample_item):
     assert "text/csv" in response.headers["content-type"]
     assert "HDMI Cable" in response.text
 
+
+
+def test_update_with_null_fields_is_ignored(client, sample_item):
+    item = client.post("/api/items", json=sample_item).json()
+    response = client.put(f"/api/items/{item['id']}", json={"quantity": None, "name": None})
+    assert response.status_code == 200
+    assert response.json()["quantity"] == 12
+    assert response.json()["name"] == "HDMI Cable"
+    assert client.get("/api/items").status_code == 200
+
+
+def test_blank_name_is_rejected(client, sample_item):
+    response = client.post("/api/items", json={**sample_item, "name": "   "})
+    assert response.status_code == 422

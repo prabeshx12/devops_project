@@ -2,7 +2,7 @@ import logging
 from time import perf_counter
 
 from fastapi import APIRouter, Query, Response, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from backend.metrics import INVENTORY_OPERATION_DURATION_SECONDS, INVENTORY_OPERATIONS_TOTAL
 from backend.services import inventory_service
@@ -12,6 +12,8 @@ router = APIRouter(prefix="/api/items", tags=["inventory"])
 
 
 class ItemCreate(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
     name: str = Field(..., min_length=1, max_length=100)
     category: str = Field(default="General", max_length=60)
     quantity: int = Field(..., ge=0)
@@ -22,6 +24,8 @@ class ItemCreate(BaseModel):
 
 
 class ItemUpdate(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
     name: str | None = Field(default=None, min_length=1, max_length=100)
     category: str | None = Field(default=None, max_length=60)
     quantity: int | None = Field(default=None, ge=0)
@@ -79,7 +83,7 @@ def get_item(item_id: str):
 @router.put("/{item_id}")
 def update_item(item_id: str, item: ItemUpdate):
     started = perf_counter()
-    payload = item.model_dump(exclude_unset=True)
+    payload = item.model_dump(exclude_unset=True, exclude_none=True)
     updated = inventory_service.update_item(item_id, payload)
     logger.info("Updated inventory item %s", item_id)
     _record("update", started)

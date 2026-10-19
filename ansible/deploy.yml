@@ -16,7 +16,9 @@
       ansible.builtin.command: >
         docker login {{ acr_login_server }}
         --username {{ acr_username }}
-        --password {{ acr_password }}
+        --password-stdin
+      args:
+        stdin: "{{ acr_password }}"
       changed_when: false
       no_log: true
 

@@ -110,11 +110,15 @@ The Jenkins pipeline:
 1. Checks out the GitHub repository
 2. Creates and uses a Python virtual environment
 3. Installs backend dependencies
-4. Runs pytest
-5. Builds a Docker image
-6. Pushes the image to Azure Container Registry
-7. Runs Ansible to deploy the latest image on the Azure VM
-8. Verifies `/health`
+4. Lints the backend with ruff
+5. Runs pytest
+6. Builds a Docker image
+7. Scans the image for HIGH/CRITICAL vulnerabilities with Trivy (report-only)
+8. Pushes the image to Azure Container Registry
+9. Runs Ansible to deploy the new image on the Azure VM. If the new container fails its health check, Ansible rolls back to the previously running image and fails the build.
+10. Verifies `/health`
+
+Jenkins needs two secret-text credentials for the push: `azure-client-id` and `azure-client-secret` (a service principal with the `AcrPush` role on the registry), plus `acr-login-server`. Terraform can grant the role if you set `jenkins_sp_object_id`.
 
 ## Monitoring
 
@@ -126,7 +130,7 @@ Prometheus scrapes the FastAPI `/metrics` endpoint. The app exposes:
 - `inventory_items_total`
 - `inventory_low_stock_total`
 
-Grafana is preconfigured with Prometheus as a datasource.
+Grafana is preconfigured with Prometheus as a datasource and an **InventoryOps** dashboard (`monitoring/grafana/dashboards/inventoryops.json`) showing app status, item and low-stock counts, request rate, error responses, p95 latency, and inventory operations.
 
 ## Project Note
 

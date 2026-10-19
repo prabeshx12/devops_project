@@ -25,46 +25,79 @@
     - name: Pull latest InventoryOps image
       ansible.builtin.command: docker pull {{ image_name }}
 
-    - name: Stop existing container
-      ansible.builtin.command: docker stop {{ app_name }}
-      register: stop_result
+    - name: Record image of the currently running container for rollback
+      ansible.builtin.command: docker inspect --format {% raw %}'{{ .Config.Image }}'{% endraw %} {{ app_name }}
+      register: previous_image
       failed_when: false
-      changed_when: stop_result.rc == 0
+      changed_when: false
 
-    - name: Remove existing container
-      ansible.builtin.command: docker rm {{ app_name }}
-      register: rm_result
-      failed_when: false
-      changed_when: rm_result.rc == 0
+    - name: Deploy new container, rolling back if it is unhealthy
+      block:
+        - name: Stop existing container
+          ansible.builtin.command: docker stop {{ app_name }}
+          register: stop_result
+          failed_when: false
+          changed_when: stop_result.rc == 0
 
-    - name: Stop local Compose app container if it is using the app port
-      ansible.builtin.command: docker stop inventoryops-app
-      register: stop_compose_result
-      failed_when: false
-      changed_when: stop_compose_result.rc == 0
+        - name: Remove existing container
+          ansible.builtin.command: docker rm {{ app_name }}
+          register: rm_result
+          failed_when: false
+          changed_when: rm_result.rc == 0
 
-    - name: Remove local Compose app container if it exists
-      ansible.builtin.command: docker rm inventoryops-app
-      register: rm_compose_result
-      failed_when: false
-      changed_when: rm_compose_result.rc == 0
+        - name: Stop local Compose app container if it is using the app port
+          ansible.builtin.command: docker stop inventoryops-app
+          register: stop_compose_result
+          failed_when: false
+          changed_when: stop_compose_result.rc == 0
 
-    - name: Run new InventoryOps container
-      ansible.builtin.command: >
-        docker run -d
-        --name {{ app_name }}
-        --restart unless-stopped
-        -p {{ app_port }}:8000
-        -e DATA_DIR=/app/data
-        -e LOG_LEVEL=INFO
-        -v {{ data_dir }}:/app/data
-        {{ image_name }}
+        - name: Remove local Compose app container if it exists
+          ansible.builtin.command: docker rm inventoryops-app
+          register: rm_compose_result
+          failed_when: false
+          changed_when: rm_compose_result.rc == 0
 
-    - name: Verify health endpoint inside the app container
-      ansible.builtin.command: >
-        docker exec {{ app_name }}
-        python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5)"
-      register: health_result
-      retries: 10
-      delay: 3
-      until: health_result.rc == 0
+        - name: Run new InventoryOps container
+          ansible.builtin.command: >
+            docker run -d
+            --name {{ app_name }}
+            --restart unless-stopped
+            -p {{ app_port }}:8000
+            -e DATA_DIR=/app/data
+            -e LOG_LEVEL=INFO
+            -v {{ data_dir }}:/app/data
+            {{ image_name }}
+
+        - name: Verify health endpoint inside the app container
+          ansible.builtin.command: >
+            docker exec {{ app_name }}
+            python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5)"
+          register: health_result
+          retries: 10
+          delay: 3
+          until: health_result.rc == 0
+
+      rescue:
+        - name: Remove failed container
+          ansible.builtin.command: docker rm -f {{ app_name }}
+          failed_when: false
+
+        - name: Roll back to previous image
+          ansible.builtin.command: >
+            docker run -d
+            --name {{ app_name }}
+            --restart unless-stopped
+            -p {{ app_port }}:8000
+            -e DATA_DIR=/app/data
+            -e LOG_LEVEL=INFO
+            -v {{ data_dir }}:/app/data
+            {{ previous_image.stdout }}
+          when:
+            - previous_image.rc == 0
+            - previous_image.stdout != image_name
+
+        - name: Fail the deployment
+          ansible.builtin.fail:
+            msg: >-
+              Deployment of {{ image_name }} failed its health check.
+              {{ 'Rolled back to ' ~ previous_image.stdout if (previous_image.rc == 0 and previous_image.stdout != image_name) else 'No previous image to roll back to.' }}

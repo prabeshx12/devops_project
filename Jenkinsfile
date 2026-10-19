@@ -22,6 +22,16 @@ pipeline {
                     . venv/bin/activate
                     pip install --upgrade pip
                     pip install -r backend/requirements.txt
+                    pip install ruff==0.8.4
+                '''
+            }
+        }
+
+        stage('Lint') {
+            steps {
+                sh '''
+                    . venv/bin/activate
+                    ruff check backend
                 '''
             }
         }
@@ -41,20 +51,29 @@ pipeline {
             }
         }
 
+        stage('Scan Image') {
+            steps {
+                // Report-only: change --exit-code to 1 to fail the build on findings.
+                sh '''
+                    docker run --rm \
+                        -v /var/run/docker.sock:/var/run/docker.sock \
+                        -v trivy-cache:/root/.cache/ \
+                        aquasec/trivy:0.58.1 image \
+                            --severity HIGH,CRITICAL \
+                            --ignore-unfixed \
+                            --exit-code 0 \
+                            inventoryops:${IMAGE_TAG}
+                '''
+            }
+        }
+
         stage('Push Docker Image to Azure ACR') {
             steps {
                 withCredentials([
                     string(credentialsId: 'azure-client-id', variable: 'AZURE_CLIENT_ID'),
-                    string(credentialsId: 'azure-client-secret', variable: 'AZURE_CLIENT_SECRET'),
-                    string(credentialsId: 'azure-tenant-id', variable: 'AZURE_TENANT_ID'),
-                    string(credentialsId: 'azure-subscription-id', variable: 'AZURE_SUBSCRIPTION_ID')
+                    string(credentialsId: 'azure-client-secret', variable: 'AZURE_CLIENT_SECRET')
                 ]) {
                     sh '''
-                        az login --service-principal \
-                            --username ${AZURE_CLIENT_ID} \
-                            --password ${AZURE_CLIENT_SECRET} \
-                            --tenant ${AZURE_TENANT_ID}
-                        az account set --subscription ${AZURE_SUBSCRIPTION_ID}
                         echo "${AZURE_CLIENT_SECRET}" | docker login ${ACR_LOGIN_SERVER} \
                             --username ${AZURE_CLIENT_ID} \
                             --password-stdin

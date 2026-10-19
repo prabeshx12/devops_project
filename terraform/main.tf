@@ -170,3 +170,10 @@ resource "azurerm_linux_virtual_machine" "main" {
   EOF
   )
 }
+
+resource "azurerm_role_assignment" "jenkins_acr_push" {
+  count                = var.jenkins_sp_object_id == null ? 0 : 1
+  scope                = azurerm_container_registry.app.id
+  role_definition_name = "AcrPush"
+  principal_id         = var.jenkins_sp_object_id
+}

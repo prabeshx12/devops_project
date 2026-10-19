@@ -32,3 +32,9 @@ variable "allowed_ssh_cidr" {
   type        = string
 }
 
+
+variable "jenkins_sp_object_id" {
+  description = "Object ID of the service principal Jenkins uses to push images. Leave null to skip the AcrPush role assignment."
+  type        = string
+  default     = null
+}
